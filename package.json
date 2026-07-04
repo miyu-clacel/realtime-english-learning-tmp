@@ -2,6 +2,9 @@
   "name": "realtime-chat",
   "version": "0.1.0",
   "private": true,
+  "engines": {
+    "node": ">=20"
+  },
   "scripts": {
     "dev": "tsx server.ts",
     "build": "next build",
@@ -9,29 +12,27 @@
     "lint": "next lint"
   },
   "dependencies": {
+    "@eslint/eslintrc": "^3",
     "@radix-ui/react-slot": "^1.2.0",
+    "@tailwindcss/postcss": "^4",
+    "@types/node": "^20",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "@types/ws": "^8.18.0",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
+    "eslint": "^9",
+    "eslint-config-next": "15.2.4",
     "gsap": "^3.12.7",
     "lucide-react": "^0.487.0",
     "next": "15.2.4",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "tailwind-merge": "^3.0.2",
+    "tailwindcss": "^4",
     "tsx": "^4.19.3",
+    "typescript": "^5",
     "uuid": "^11.1.0",
     "ws": "^8.18.1"
-  },
-  "devDependencies": {
-    "@eslint/eslintrc": "^3",
-    "@tailwindcss/postcss": "^4",
-    "@types/node": "^20",
-    "@types/react": "^19",
-    "@types/react-dom": "^19",
-    "@types/ws": "^8.18.0",
-    "eslint": "^9",
-    "eslint-config-next": "15.2.4",
-    "tailwindcss": "^4",
-    "typescript": "^5"
   }
 }
