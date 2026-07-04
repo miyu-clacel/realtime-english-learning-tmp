@@ -79,6 +79,7 @@ export function useQuizWebSocket(roomId: string, username: string) {
     setTimeLimitSeconds(null);
     setEndsAt(null);
     setTimeUp(false);
+    intentionalCloseRef.current = false;
     setWsError(null);
     setPhase("lobby");
 
