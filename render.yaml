@@ -1,0 +1,11 @@
+services:
+  - type: web
+    name: realtime-chat
+    runtime: node
+    plan: free
+    buildCommand: npm install && npm run build
+    startCommand: npm run start
+    healthCheckPath: /
+    envVars:
+      - key: NODE_ENV
+        value: production
