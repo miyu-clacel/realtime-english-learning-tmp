@@ -15,10 +15,10 @@ function getWsUrl(): string {
 
   if (typeof window !== "undefined") {
     const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
-    return `${protocol}//${window.location.host}`;
+    return `${protocol}//${window.location.host}/ws`;
   }
 
-  return "ws://localhost:3000";
+  return "ws://localhost:3000/ws";
 }
 
 export type QuizPhase = "lobby" | "quiz" | "waiting" | "ranking";
@@ -39,6 +39,7 @@ export function useQuizWebSocket(roomId: string, username: string) {
   const [rankings, setRankings] = useState<RankingEntry[]>([]);
   const [wsError, setWsError] = useState<string | null>(null);
   const wsRef = useRef<WebSocket | null>(null);
+  const intentionalCloseRef = useRef(false);
 
   const applyRoomState = useCallback((data: WsMessage) => {
     if (data.participants) setParticipants(data.participants);
@@ -148,9 +149,17 @@ export function useQuizWebSocket(roomId: string, username: string) {
 
     ws.onclose = () => {
       setConnected(false);
+      if (!intentionalCloseRef.current) {
+        setWsError("サーバーとの接続が切れました。ページを再読み込みしてください。");
+      }
+    };
+
+    ws.onerror = () => {
+      setWsError("WebSocket接続に失敗しました。ページを再読み込みしてください。");
     };
 
     return () => {
+      intentionalCloseRef.current = true;
       ws.close();
     };
   }, [roomId, username, applyRoomState, applyQuizStart]);

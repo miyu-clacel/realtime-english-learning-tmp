@@ -1,4 +1,5 @@
 import type { Server } from "http";
+import { parse } from "url";
 import { WebSocketServer, WebSocket } from "ws";
 import { getRoom } from "./rooms";
 import { gradeQuiz, toPublicQuestions } from "./quiz";
@@ -448,6 +449,12 @@ function handleDisconnect(ws: WebSocket) {
 
 function bindWebSocketHandlers(wss: WebSocketServer) {
   wss.on("connection", (ws) => {
+    const client = ws as WebSocket & { isAlive?: boolean };
+    client.isAlive = true;
+    ws.on("pong", () => {
+      client.isAlive = true;
+    });
+
     ws.on("message", (raw) => {
       try {
         const data = JSON.parse(raw.toString()) as WsMessage;
@@ -474,13 +481,44 @@ function bindWebSocketHandlers(wss: WebSocketServer) {
     });
   });
 
+  const interval = setInterval(() => {
+    for (const ws of wss.clients) {
+      const client = ws as WebSocket & { isAlive?: boolean };
+      if (client.isAlive === false) {
+        client.terminate();
+        continue;
+      }
+      client.isAlive = false;
+      client.ping();
+    }
+  }, 30000);
+
+  wss.on("close", () => clearInterval(interval));
+
   return wss;
 }
 
-/** 本番デプロイ用: HTTP サーバーと同じポートで WebSocket を提供 */
+export const WS_PATH = "/ws";
+
+/** 本番デプロイ用: HTTP サーバーと同じポートの /ws で WebSocket を提供 */
 export function attachWebSocketServer(server: Server) {
-  const wss = bindWebSocketHandlers(new WebSocketServer({ server }));
-  console.log("> WebSocket server attached to HTTP server");
+  const wss = bindWebSocketHandlers(
+    new WebSocketServer({ noServer: true, perMessageDeflate: false })
+  );
+
+  server.on("upgrade", (request, socket, head) => {
+    const { pathname } = parse(request.url ?? "");
+    if (pathname !== WS_PATH) {
+      socket.destroy();
+      return;
+    }
+
+    wss.handleUpgrade(request, socket, head, (ws) => {
+      wss.emit("connection", ws, request);
+    });
+  });
+
+  console.log(`> WebSocket server attached at ${WS_PATH}`);
   return wss;
 }
 
