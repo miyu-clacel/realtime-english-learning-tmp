@@ -3,6 +3,16 @@ import { parse } from "url";
 import { WebSocketServer, WebSocket } from "ws";
 import { getRoom } from "./rooms";
 import { gradeQuiz, toPublicQuestions } from "./quiz";
+import {
+  getSurviveSession,
+  getSurviveSessionStatus,
+  handleSurviveJoin,
+  handleSurviveSubmit,
+  resetSurviveSession,
+  sendSurviveRoomState,
+  startSurviveGame,
+  syncSurvivePlayerState,
+} from "./ws-survive";
 import type { QuizResult, RankingEntry, WsMessage } from "./types";
 
 const TIME_UP_GRACE_MS = 500;
@@ -139,6 +149,12 @@ function buildRankings(roomId: string, session: RoomSession): RankingEntry[] {
 }
 
 function sendRoomState(roomId: string) {
+  const room = getRoom(roomId);
+  if (room?.gameType === "survive") {
+    sendSurviveRoomState(roomId, getConnectedUsernames, broadcast);
+    return;
+  }
+
   const session = getSession(roomId);
   const connected = getConnectedUsernames(roomId);
   const submittedUsers = connected.filter((name) =>
@@ -268,8 +284,13 @@ export function getRoomSessionStatus(roomId: string) {
   const room = getRoom(roomId);
   if (!room) return null;
 
-  const session = getSession(roomId);
   const participants = getConnectedUsernames(roomId);
+
+  if (room.gameType === "survive") {
+    return getSurviveSessionStatus(roomId, participants);
+  }
+
+  const session = getSession(roomId);
 
   return {
     roomId: room.id,
@@ -290,6 +311,15 @@ export function startQuiz(
   const room = getRoom(roomId);
   if (!room) {
     return { ok: false, error: "ルームが見つかりません" };
+  }
+
+  if (room.gameType === "survive") {
+    return startSurviveGame(
+      roomId,
+      getConnectedUsernames,
+      broadcast,
+      sendRoomState
+    );
   }
 
   const normalized = roomId.toUpperCase();
@@ -325,6 +355,10 @@ export function revealResults(
     return { ok: false, error: "ルームが見つかりません" };
   }
 
+  if (room.gameType === "survive") {
+    return { ok: false, error: "Surviveモードでは使用できません" };
+  }
+
   const normalized = roomId.toUpperCase();
   const session = getSession(normalized);
 
@@ -356,6 +390,45 @@ function handleJoin(ws: WebSocket, roomId: string, username: string) {
 
   if (!trimmedUsername) {
     send(ws, { type: "error", error: "ユーザー名が無効です" });
+    return;
+  }
+
+  if (room.gameType === "survive") {
+    let session = getSurviveSession(normalizedRoomId);
+    if (session.phase === "final") {
+      resetSurviveSession(normalizedRoomId);
+      broadcast(normalizedRoomId, {
+        type: "reset",
+        gameType: "survive",
+        phase: "lobby",
+      });
+      session = getSurviveSession(normalizedRoomId);
+    }
+
+    const isKnownPlayer = session.playerStates.has(trimmedUsername);
+    if (
+      session.phase !== "lobby" &&
+      session.phase !== "final" &&
+      !isKnownPlayer
+    ) {
+      send(ws, { type: "error", error: "ゲーム進行中は参加できません" });
+      return;
+    }
+
+    clients.set(ws, { roomId: normalizedRoomId, username: trimmedUsername });
+
+    if (session.phase === "lobby" || session.phase === "final") {
+      handleSurviveJoin(ws, normalizedRoomId, send, broadcast, sendRoomState);
+    } else {
+      send(ws, {
+        type: "quiz_data",
+        gameType: "survive",
+        timeLimitSeconds: room.timeLimitSeconds,
+        totalQuestions: room.questions.length,
+      });
+      syncSurvivePlayerState(ws, normalizedRoomId, send);
+      sendRoomState(normalizedRoomId);
+    }
     return;
   }
 
@@ -399,6 +472,18 @@ function handleSubmit(ws: WebSocket, answers: Record<number, string>) {
 
   const room = getRoom(info.roomId);
   if (!room) return;
+
+  if (room.gameType === "survive") {
+    handleSurviveSubmit(
+      ws,
+      info.roomId,
+      info.username,
+      answers,
+      send,
+      sendRoomState
+    );
+    return;
+  }
 
   const session = getSession(info.roomId);
 

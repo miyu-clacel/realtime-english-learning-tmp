@@ -1,6 +1,21 @@
 import { NextResponse } from "next/server";
 import { createRoom, getAllRooms } from "@/lib/rooms";
-import { validateQuestions, validateTimeLimit, DEFAULT_TIME_LIMIT_SECONDS } from "@/lib/quiz";
+import {
+  validateQuestions,
+  validateTimeLimit,
+  DEFAULT_TIME_LIMIT_SECONDS,
+  DEFAULT_QUIZ_QUESTIONS,
+} from "@/lib/quiz";
+import {
+  DEFAULT_SURVIVE_QUESTIONS,
+  SURVIVE_ROUND_SECONDS,
+} from "@/lib/survive";
+import type { GameType } from "@/lib/types";
+
+function parseGameType(value: unknown): GameType | null {
+  if (value === "word-quiz" || value === "survive") return value;
+  return null;
+}
 
 export async function GET() {
   const rooms = getAllRooms();
@@ -11,6 +26,7 @@ export async function POST(request: Request) {
   try {
     const body = await request.json();
     const name = body.name?.trim();
+    const gameType = parseGameType(body.gameType) ?? "word-quiz";
 
     if (!name) {
       return NextResponse.json(
@@ -19,7 +35,29 @@ export async function POST(request: Request) {
       );
     }
 
-    const validated = validateQuestions(body.questions);
+    if (gameType === "survive") {
+      const room = createRoom(
+        name,
+        "survive",
+        DEFAULT_SURVIVE_QUESTIONS,
+        SURVIVE_ROUND_SECONDS
+      );
+      return NextResponse.json(
+        {
+          room: {
+            id: room.id,
+            name: room.name,
+            createdAt: room.createdAt,
+            gameType: room.gameType,
+            questions: room.questions,
+            timeLimitSeconds: room.timeLimitSeconds,
+          },
+        },
+        { status: 201 }
+      );
+    }
+
+    const validated = validateQuestions(body.questions ?? DEFAULT_QUIZ_QUESTIONS);
     if (typeof validated === "string") {
       return NextResponse.json({ error: validated }, { status: 400 });
     }
@@ -31,13 +69,14 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: timeLimit }, { status: 400 });
     }
 
-    const room = createRoom(name, validated, timeLimit);
+    const room = createRoom(name, "word-quiz", validated, timeLimit);
     return NextResponse.json(
       {
         room: {
           id: room.id,
           name: room.name,
           createdAt: room.createdAt,
+          gameType: room.gameType,
           questions: room.questions,
           timeLimitSeconds: room.timeLimitSeconds,
         },

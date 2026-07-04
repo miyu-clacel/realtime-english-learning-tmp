@@ -13,20 +13,25 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { getPlayPath } from "@/lib/games";
+import type { GameType } from "@/lib/types";
 
 export default function UsernamePage() {
   const router = useRouter();
   const [username, setUsername] = useState("");
   const [roomId, setRoomId] = useState("");
+  const [gameType, setGameType] = useState<GameType | null>(null);
   const [error, setError] = useState("");
 
   useEffect(() => {
     const storedRoomId = sessionStorage.getItem("roomId");
+    const storedGameType = sessionStorage.getItem("gameType") as GameType | null;
     if (!storedRoomId) {
       router.replace("/");
       return;
     }
     setRoomId(storedRoomId);
+    setGameType(storedGameType ?? "word-quiz");
   }, [router]);
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -44,7 +49,7 @@ export default function UsernamePage() {
     }
 
     sessionStorage.setItem("username", trimmed);
-    router.push("/quiz");
+    router.push(getPlayPath(gameType ?? "word-quiz"));
   };
 
   if (!roomId) return null;
@@ -60,7 +65,7 @@ export default function UsernamePage() {
             <CardTitle>ユーザー名を設定</CardTitle>
             <CardDescription>
               ルーム <span className="font-mono font-semibold">{roomId}</span>{" "}
-              のテストに参加します
+              に参加します
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -77,12 +82,10 @@ export default function UsernamePage() {
                 />
               </div>
 
-              {error && (
-                <p className="text-sm text-destructive">{error}</p>
-              )}
+              {error && <p className="text-sm text-destructive">{error}</p>}
 
               <Button type="submit" className="w-full">
-                テストを始める
+                ゲームに入る
               </Button>
             </form>
           </CardContent>

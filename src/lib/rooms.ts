@@ -1,5 +1,5 @@
 import { v4 as uuidv4 } from "uuid";
-import type { QuizQuestion, Room, RoomPublic } from "./types";
+import type { GameType, QuizQuestion, Room, RoomPublic } from "./types";
 import { toPublicQuestions } from "./quiz";
 
 const globalForRooms = globalThis as unknown as {
@@ -13,6 +13,7 @@ if (!globalForRooms.rooms) {
 
 export function createRoom(
   name: string,
+  gameType: GameType,
   questions: QuizQuestion[],
   timeLimitSeconds: number
 ): Room {
@@ -20,6 +21,7 @@ export function createRoom(
     id: uuidv4().slice(0, 8).toUpperCase(),
     name,
     createdAt: Date.now(),
+    gameType,
     questions,
     timeLimitSeconds,
   };
@@ -38,6 +40,7 @@ export function getRoomPublic(roomId: string): RoomPublic | undefined {
     id: room.id,
     name: room.name,
     createdAt: room.createdAt,
+    gameType: room.gameType,
     questions: toPublicQuestions(room.questions),
     timeLimitSeconds: room.timeLimitSeconds,
   };
@@ -48,6 +51,7 @@ export function getAllRooms(): RoomPublic[] {
     id: room.id,
     name: room.name,
     createdAt: room.createdAt,
+    gameType: room.gameType,
     questions: toPublicQuestions(room.questions),
     timeLimitSeconds: room.timeLimitSeconds,
   }));
