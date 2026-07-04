@@ -11,13 +11,13 @@ export const GAMES: Record<GameType, GameInfo> = {
   "word-quiz": {
     id: "word-quiz",
     name: "単語テスト",
-    description: "5問の穴埋めテスト。全員提出後にランキング発表。",
+    description: "B2レベル5問の穴埋めテスト。全員提出後にランキング発表。",
     emoji: "📚",
   },
   survive: {
     id: "survive",
     name: "Survive",
-    description: "10問サバイバル。15秒以内に正解した人だけ生き残る。",
+    description: "30問サバイバル（A2〜C1プリセット）。10秒以内に正解した人だけ生き残る。",
     emoji: "🔥",
   },
 };

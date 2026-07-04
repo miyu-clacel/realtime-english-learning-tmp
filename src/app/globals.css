@@ -25,6 +25,7 @@
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);
   --radius-xl: calc(var(--radius) + 4px);
+  --animate-stamp-float: stamp-float 3s ease-out forwards;
 }
 
 :root {
@@ -76,5 +77,24 @@
   }
   body {
     @apply bg-background text-foreground;
+  }
+}
+
+@keyframes stamp-float {
+  0% {
+    opacity: 0;
+    transform: translateY(0) scale(0.6);
+  }
+  10% {
+    opacity: 1;
+    transform: translateY(-8vh) scale(1.1);
+  }
+  70% {
+    opacity: 1;
+    transform: translateY(-55vh) scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-75vh) scale(0.85);
   }
 }

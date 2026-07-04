@@ -15,6 +15,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { useSurviveWebSocket } from "@/hooks/use-survive-websocket";
+import { StampOverlay, StampPicker } from "@/components/survive-stamps";
 import { MAX_LAST_WORDS_LENGTH } from "@/lib/survive";
 import type { SurviveLastWord } from "@/lib/types";
 
@@ -184,6 +185,8 @@ export default function SurvivePage() {
     question,
     questionNumber,
     totalQuestions,
+    roundSeconds,
+    difficultyLabel,
     endsAt,
     survivors,
     aliveCount,
@@ -195,9 +198,12 @@ export default function SurvivePage() {
     finalResults,
     lastWords,
     hasLastWords,
+    stampEvents,
+    stampCooldown,
     wsError,
     submitAnswer,
     submitLastWords,
+    sendStamp,
   } = useSurviveWebSocket(roomId, username);
 
   useEffect(() => {
@@ -254,6 +260,7 @@ export default function SurvivePage() {
 
   return (
     <main className="min-h-screen p-4 bg-gradient-to-br from-background via-background to-orange-500/5">
+      {connected && phase !== "lobby" && <StampOverlay events={stampEvents} />}
       <div className="max-w-4xl mx-auto py-6">
         <header className="flex items-center justify-between mb-6">
           <div>
@@ -303,7 +310,8 @@ export default function SurvivePage() {
                     </CardDescription>
                   </CardHeader>
                   <CardContent className="text-center text-sm text-muted-foreground">
-                    全{totalQuestions}問 · 各問15秒 · 正解者のみ生存
+                    {difficultyLabel ? `${difficultyLabel} · ` : ""}
+                    全{totalQuestions}問 · 各問{roundSeconds}秒 · 正解者のみ生存
                   </CardContent>
                 </Card>
               )}
@@ -342,6 +350,14 @@ export default function SurvivePage() {
                         {!hasLastWords && (
                           <LastWordsForm onSubmit={submitLastWords} />
                         )}
+                        <Card className="border-dashed bg-muted/20">
+                          <CardContent className="pt-6">
+                            <StampPicker
+                              onStamp={sendStamp}
+                              disabled={stampCooldown}
+                            />
+                          </CardContent>
+                        </Card>
                       </div>
                     ) : submitted ? (
                       <p className="text-center text-primary py-4 font-medium">
@@ -416,6 +432,14 @@ export default function SurvivePage() {
                         {!hasLastWords && (
                           <LastWordsForm onSubmit={submitLastWords} />
                         )}
+                        <Card className="border-dashed bg-muted/20">
+                          <CardContent className="pt-6">
+                            <StampPicker
+                              onStamp={sendStamp}
+                              disabled={stampCooldown}
+                            />
+                          </CardContent>
+                        </Card>
                       </div>
                     )}
                   </CardContent>
@@ -470,8 +494,20 @@ export default function SurvivePage() {
                         </div>
                       ))}
                     </div>
-                    {!isAlive && !hasLastWords && (
-                      <LastWordsForm onSubmit={submitLastWords} />
+                    {!isAlive && (
+                      <div className="space-y-4 mt-4">
+                        {!hasLastWords && (
+                          <LastWordsForm onSubmit={submitLastWords} />
+                        )}
+                        <Card className="border-dashed bg-muted/20">
+                          <CardContent className="pt-6">
+                            <StampPicker
+                              onStamp={sendStamp}
+                              disabled={stampCooldown}
+                            />
+                          </CardContent>
+                        </Card>
+                      </div>
                     )}
                   </CardContent>
                 </Card>

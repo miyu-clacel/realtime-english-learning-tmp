@@ -5,8 +5,10 @@ import type {
   QuizQuestionPublic,
   SurviveLastWord,
   SurvivePlayerResult,
+  SurviveStampEvent,
   WsMessage,
 } from "@/lib/types";
+import { STAMP_COOLDOWN_MS } from "@/lib/survive";
 
 function getWsUrl(): string {
   if (process.env.NEXT_PUBLIC_WS_URL) {
@@ -30,7 +32,9 @@ export function useSurviveWebSocket(roomId: string, username: string) {
   const [phase, setPhase] = useState<SurvivePhase>("lobby");
   const [question, setQuestion] = useState<QuizQuestionPublic | null>(null);
   const [questionNumber, setQuestionNumber] = useState(0);
-  const [totalQuestions, setTotalQuestions] = useState(10);
+  const [totalQuestions, setTotalQuestions] = useState(30);
+  const [roundSeconds, setRoundSeconds] = useState(10);
+  const [difficultyLabel, setDifficultyLabel] = useState<string | null>(null);
   const [endsAt, setEndsAt] = useState<number | null>(null);
   const [survivors, setSurvivors] = useState<string[]>([]);
   const [aliveCount, setAliveCount] = useState(0);
@@ -41,6 +45,8 @@ export function useSurviveWebSocket(roomId: string, username: string) {
   const [isAlive, setIsAlive] = useState(true);
   const [finalResults, setFinalResults] = useState<SurvivePlayerResult[]>([]);
   const [lastWords, setLastWords] = useState<SurviveLastWord[]>([]);
+  const [stampEvents, setStampEvents] = useState<SurviveStampEvent[]>([]);
+  const [stampCooldown, setStampCooldown] = useState(false);
   const [participants, setParticipants] = useState<string[]>([]);
   const [wsError, setWsError] = useState<string | null>(null);
   const wsRef = useRef<WebSocket | null>(null);
@@ -55,6 +61,8 @@ export function useSurviveWebSocket(roomId: string, username: string) {
     setSubmitted(false);
     setIsAlive(true);
     setLastWords([]);
+    setStampEvents([]);
+    setStampCooldown(false);
 
     const ws = new WebSocket(getWsUrl());
     wsRef.current = ws;
@@ -76,6 +84,8 @@ export function useSurviveWebSocket(roomId: string, username: string) {
       switch (data.type) {
         case "quiz_data":
           if (data.totalQuestions) setTotalQuestions(data.totalQuestions);
+          if (data.timeLimitSeconds) setRoundSeconds(data.timeLimitSeconds);
+          if (data.difficultyLabel) setDifficultyLabel(data.difficultyLabel);
           if (data.lastWords) setLastWords(data.lastWords);
           if (data.totalParticipants !== undefined) {
             setTotalParticipants(data.totalParticipants);
@@ -85,7 +95,9 @@ export function useSurviveWebSocket(roomId: string, username: string) {
           setPhase("question");
           setQuestion(data.question ?? null);
           setQuestionNumber(data.questionNumber ?? 0);
-          setTotalQuestions(data.totalQuestions ?? 10);
+          setTotalQuestions(data.totalQuestions ?? 30);
+          if (data.timeLimitSeconds) setRoundSeconds(data.timeLimitSeconds);
+          if (data.difficultyLabel) setDifficultyLabel(data.difficultyLabel);
           setEndsAt(data.endsAt ?? null);
           setSurvivors(data.survivors ?? []);
           setAliveCount(data.aliveCount ?? 0);
@@ -126,6 +138,21 @@ export function useSurviveWebSocket(roomId: string, username: string) {
         case "survive_last_words_update":
           if (data.lastWords) setLastWords(data.lastWords);
           break;
+        case "survive_stamp": {
+          const stampUser = data.username;
+          const stampEmoji = data.stamp;
+          if (stampUser && stampEmoji) {
+            setStampEvents((prev) => [
+              ...prev,
+              {
+                id: data.stampId ?? `${Date.now()}-${stampUser}`,
+                username: stampUser,
+                stamp: stampEmoji,
+              },
+            ]);
+          }
+          break;
+        }
         case "survive_submit_ack":
           setSubmitted(true);
           break;
@@ -147,6 +174,8 @@ export function useSurviveWebSocket(roomId: string, username: string) {
           setIsAlive(true);
           setFinalResults([]);
           setLastWords([]);
+          setStampEvents([]);
+          setStampCooldown(false);
           break;
         case "error":
           if (data.error) setWsError(data.error);
@@ -198,6 +227,20 @@ export function useSurviveWebSocket(roomId: string, username: string) {
     );
   }, []);
 
+  const sendStamp = useCallback((stamp: string) => {
+    if (!wsRef.current || wsRef.current.readyState !== WebSocket.OPEN) return;
+    if (stampCooldown) return;
+    setWsError(null);
+    wsRef.current.send(
+      JSON.stringify({
+        type: "survive_stamp",
+        stamp,
+      } satisfies WsMessage)
+    );
+    setStampCooldown(true);
+    setTimeout(() => setStampCooldown(false), STAMP_COOLDOWN_MS);
+  }, [stampCooldown]);
+
   const hasLastWords = lastWords.some((entry) => entry.username === username);
 
   return {
@@ -206,6 +249,8 @@ export function useSurviveWebSocket(roomId: string, username: string) {
     question,
     questionNumber,
     totalQuestions,
+    roundSeconds,
+    difficultyLabel,
     endsAt,
     survivors,
     aliveCount,
@@ -217,9 +262,12 @@ export function useSurviveWebSocket(roomId: string, username: string) {
     finalResults,
     lastWords,
     hasLastWords,
+    stampEvents,
+    stampCooldown,
     participants,
     wsError,
     submitAnswer,
     submitLastWords,
+    sendStamp,
   };
 }

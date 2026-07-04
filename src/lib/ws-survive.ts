@@ -1,10 +1,13 @@
 import { WebSocket } from "ws";
+import { v4 as uuidv4 } from "uuid";
 import { getRoom } from "./rooms";
 import {
   MAX_LAST_WORDS_LENGTH,
+  STAMP_COOLDOWN_MS,
   SURVIVE_ROUND_RESULT_MS,
-  SURVIVE_ROUND_SECONDS,
+  getSurvivePresetLabel,
   gradeSurviveAnswer,
+  isSurviveStamp,
 } from "./survive";
 import { toPublicQuestions } from "./quiz";
 import type { QuizQuestion, SurviveLastWord, SurvivePlayerResult, WsMessage } from "./types";
@@ -21,6 +24,7 @@ interface SurviveSession {
   roundAnswers: Map<string, string>;
   playerStates: Map<string, SurvivePlayerState>;
   lastWords: Map<string, SurviveLastWord>;
+  lastStampAt: Map<string, number>;
   endsAt: number | null;
   timerHandle: ReturnType<typeof setTimeout> | null;
   delayHandle: ReturnType<typeof setTimeout> | null;
@@ -44,6 +48,7 @@ function createEmptySurviveSession(): SurviveSession {
     roundAnswers: new Map(),
     playerStates: new Map(),
     lastWords: new Map(),
+    lastStampAt: new Map(),
     endsAt: null,
     timerHandle: null,
     delayHandle: null,
@@ -139,8 +144,9 @@ export function getSurviveSessionStatus(
     totalQuestions: room.questions.length,
     submittedCount: session.roundAnswers.size,
     submittedUsers: Array.from(session.roundAnswers.keys()),
-    timeLimitSeconds: SURVIVE_ROUND_SECONDS,
+    timeLimitSeconds: room.timeLimitSeconds,
     endsAt: session.endsAt,
+    survivePreset: room.survivePreset,
   };
 }
 
@@ -171,6 +177,7 @@ export function startSurviveGame(
   session.alive = new Set(connected);
   session.roundAnswers = new Map();
   session.lastWords = new Map();
+  session.lastStampAt = new Map();
   session.playerStates = new Map(
     connected.map((name) => [name, { correctCount: 0, eliminatedAtRound: null }])
   );
@@ -189,7 +196,7 @@ function startSurviveQuestion(
   clearSurviveTimers(session);
   session.phase = "question";
   session.roundAnswers = new Map();
-  session.endsAt = Date.now() + SURVIVE_ROUND_SECONDS * 1000;
+  session.endsAt = Date.now() + room.timeLimitSeconds * 1000;
 
   const question = getCurrentQuestion(room, session.questionIndex);
   if (!question) {
@@ -204,8 +211,11 @@ function startSurviveQuestion(
     question: toPublicQuestions([question])[0],
     questionNumber: session.questionIndex + 1,
     totalQuestions: room.questions.length,
-    timeLimitSeconds: SURVIVE_ROUND_SECONDS,
+    timeLimitSeconds: room.timeLimitSeconds,
     endsAt: session.endsAt,
+    difficultyLabel: room.survivePreset
+      ? getSurvivePresetLabel(room.survivePreset)
+      : undefined,
     survivors: Array.from(session.alive),
     aliveCount: session.alive.size,
     totalParticipants: getTotalParticipants(session, session.alive.size),
@@ -317,8 +327,11 @@ export function handleSurviveJoin(
   send(ws, {
     type: "quiz_data",
     gameType: "survive",
-    timeLimitSeconds: SURVIVE_ROUND_SECONDS,
+    timeLimitSeconds: room.timeLimitSeconds,
     totalQuestions: room.questions.length,
+    difficultyLabel: room.survivePreset
+      ? getSurvivePresetLabel(room.survivePreset)
+      : undefined,
     lastWords: getLastWordsList(getSurviveSession(roomId)),
   });
 
@@ -344,7 +357,7 @@ export function syncSurvivePlayerState(
       question: toPublicQuestions([question])[0],
       questionNumber: session.questionIndex + 1,
       totalQuestions: room.questions.length,
-      timeLimitSeconds: SURVIVE_ROUND_SECONDS,
+      timeLimitSeconds: room.timeLimitSeconds,
       endsAt: session.endsAt ?? undefined,
       survivors: Array.from(session.alive),
       aliveCount: session.alive.size,
@@ -501,5 +514,52 @@ export function handleSurviveLastWords(
     type: "survive_last_words_update",
     gameType: "survive",
     lastWords: getLastWordsList(session),
+  });
+}
+
+export function handleSurviveStamp(
+  ws: WebSocket,
+  roomId: string,
+  username: string,
+  stamp: string,
+  send: (ws: WebSocket, message: WsMessage) => void,
+  broadcast: (roomId: string, message: WsMessage) => void
+) {
+  const session = getSurviveSession(roomId);
+
+  if (session.phase === "lobby") {
+    send(ws, { type: "error", error: "ゲーム開始前はスタンプを送れません" });
+    return;
+  }
+
+  if (session.alive.has(username)) {
+    send(ws, { type: "error", error: "生存者はスタンプを送れません" });
+    return;
+  }
+
+  if (!session.playerStates.has(username)) {
+    send(ws, { type: "error", error: "参加者として登録されていません" });
+    return;
+  }
+
+  if (!isSurviveStamp(stamp)) {
+    send(ws, { type: "error", error: "無効なスタンプです" });
+    return;
+  }
+
+  const lastAt = session.lastStampAt.get(username) ?? 0;
+  if (Date.now() - lastAt < STAMP_COOLDOWN_MS) {
+    send(ws, { type: "error", error: "スタンプは少し待ってから送ってください" });
+    return;
+  }
+
+  session.lastStampAt.set(username, Date.now());
+
+  broadcast(roomId, {
+    type: "survive_stamp",
+    gameType: "survive",
+    username,
+    stamp,
+    stampId: uuidv4().slice(0, 8),
   });
 }

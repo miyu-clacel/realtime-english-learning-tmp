@@ -7,8 +7,10 @@ import {
   DEFAULT_QUIZ_QUESTIONS,
 } from "@/lib/quiz";
 import {
-  DEFAULT_SURVIVE_QUESTIONS,
+  DEFAULT_SURVIVE_PRESET,
   SURVIVE_ROUND_SECONDS,
+  getSurviveQuestions,
+  parseSurvivePreset,
 } from "@/lib/survive";
 import type { GameType } from "@/lib/types";
 
@@ -36,11 +38,14 @@ export async function POST(request: Request) {
     }
 
     if (gameType === "survive") {
+      const presetId = parseSurvivePreset(body.preset) ?? DEFAULT_SURVIVE_PRESET;
+      const questions = getSurviveQuestions(presetId);
       const room = createRoom(
         name,
         "survive",
-        DEFAULT_SURVIVE_QUESTIONS,
-        SURVIVE_ROUND_SECONDS
+        questions,
+        SURVIVE_ROUND_SECONDS,
+        presetId
       );
       return NextResponse.json(
         {
@@ -51,6 +56,7 @@ export async function POST(request: Request) {
             gameType: room.gameType,
             questions: room.questions,
             timeLimitSeconds: room.timeLimitSeconds,
+            survivePreset: room.survivePreset,
           },
         },
         { status: 201 }

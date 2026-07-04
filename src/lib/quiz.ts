@@ -22,33 +22,33 @@ export function minutesToSeconds(minutes: number): number {
 export const DEFAULT_QUIZ_QUESTIONS: QuizQuestion[] = [
   {
     id: 1,
-    sentence: "I ___ to school every day.",
-    answer: "go",
-    hint: "毎日学校へ「行く」",
+    sentence: "I'm looking forward ___ hearing from you soon.",
+    answer: "to",
+    hint: "look forward to + 名詞/動名詞",
   },
   {
     id: 2,
-    sentence: "She ___ English very well.",
-    answer: "speaks",
-    hint: "英語を「話す」（三人称単数）",
+    sentence: "If I ___ you, I would accept the offer.",
+    answer: "were",
+    hint: "第二条件文のbe動詞（仮定）",
   },
   {
     id: 3,
-    sentence: "This book is ___ than that one.",
-    answer: "better",
-    hint: "good の比較級",
+    sentence: "She apologized ___ being late to the meeting.",
+    answer: "for",
+    hint: "apologize for + 名詞/動名詞",
   },
   {
     id: 4,
-    sentence: "We have lived here ___ 2020.",
-    answer: "since",
-    hint: "「2020年から」という起点",
+    sentence: "The report must ___ submitted by Friday.",
+    answer: "be",
+    hint: "助動詞 + 受動態",
   },
   {
     id: 5,
-    sentence: "Could you ___ me with this homework?",
-    answer: "help",
-    hint: "宿題を「手伝って」",
+    sentence: "He told me that he ___ working there for ten years.",
+    answer: "had been",
+    hint: "間接引話法（過去完了進行形）",
   },
 ];
 

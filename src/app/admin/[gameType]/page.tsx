@@ -22,7 +22,13 @@ import {
   formatTimeLimit,
   minutesToSeconds,
 } from "@/lib/quiz";
-import { SURVIVE_QUESTION_COUNT, SURVIVE_ROUND_SECONDS } from "@/lib/survive";
+import {
+  DEFAULT_SURVIVE_PRESET,
+  SURVIVE_PRESET_LIST,
+  SURVIVE_QUESTION_COUNT,
+  SURVIVE_ROUND_SECONDS,
+  type SurvivePresetId,
+} from "@/lib/survive";
 import { GAMES, isGameType } from "@/lib/games";
 import type { GameType, QuizQuestion } from "@/lib/types";
 
@@ -33,6 +39,7 @@ interface CreatedRoom {
   gameType: GameType;
   questions: QuizQuestion[];
   timeLimitSeconds: number;
+  survivePreset?: SurvivePresetId;
 }
 
 interface RoomStatus {
@@ -80,6 +87,8 @@ function AdminGameContent({ gameType }: { gameType: GameType }) {
   const isSurvive = gameType === "survive";
 
   const [roomName, setRoomName] = useState("");
+  const [survivePreset, setSurvivePreset] =
+    useState<SurvivePresetId>(DEFAULT_SURVIVE_PRESET);
   const [timeLimitMinutes, setTimeLimitMinutes] = useState(
     String(DEFAULT_TIME_LIMIT_SECONDS / 60)
   );
@@ -215,7 +224,9 @@ function AdminGameContent({ gameType }: { gameType: GameType }) {
         gameType,
       };
 
-      if (!isSurvive) {
+      if (isSurvive) {
+        body.preset = survivePreset;
+      } else {
         const minutes = Number(timeLimitMinutes);
         if (!Number.isFinite(minutes) || minutes < 1 || !Number.isInteger(minutes)) {
           setError("制限時間は1分以上の整数（分）で入力してください");
@@ -293,7 +304,7 @@ function AdminGameContent({ gameType }: { gameType: GameType }) {
             </CardTitle>
             <CardDescription>
               {isSurvive
-                ? `${SURVIVE_QUESTION_COUNT}問・各問${SURVIVE_ROUND_SECONDS}秒のサバイバルモード`
+                ? `${SURVIVE_QUESTION_COUNT}問・各問${SURVIVE_ROUND_SECONDS}秒 · 難易度プリセットを選んでください`
                 : `ルーム名と${QUESTION_COUNT}問の穴埋め問題を設定してください`}
             </CardDescription>
           </CardHeader>
@@ -309,6 +320,39 @@ function AdminGameContent({ gameType }: { gameType: GameType }) {
                   autoFocus
                 />
               </div>
+
+              {isSurvive && (
+                <div className="space-y-3">
+                  <Label>難易度プリセット</Label>
+                  <div className="grid gap-2">
+                    {SURVIVE_PRESET_LIST.map((preset) => (
+                      <label
+                        key={preset.id}
+                        className={`flex items-start gap-3 p-3 rounded-lg border cursor-pointer transition-colors ${
+                          survivePreset === preset.id
+                            ? "border-primary bg-primary/5"
+                            : "border-border bg-muted/20 hover:bg-muted/40"
+                        }`}
+                      >
+                        <input
+                          type="radio"
+                          name="survivePreset"
+                          value={preset.id}
+                          checked={survivePreset === preset.id}
+                          onChange={() => setSurvivePreset(preset.id)}
+                          className="mt-1"
+                        />
+                        <div>
+                          <p className="font-medium text-sm">{preset.label}</p>
+                          <p className="text-xs text-muted-foreground mt-0.5">
+                            {preset.description}
+                          </p>
+                        </div>
+                      </label>
+                    ))}
+                  </div>
+                </div>
+              )}
 
               {!isSurvive && (
                 <>
@@ -397,6 +441,12 @@ function AdminGameContent({ gameType }: { gameType: GameType }) {
                           <Badge className="font-mono tracking-widest bg-muted text-foreground">
                             {room.id}
                           </Badge>
+                          {isSurvive && room.survivePreset && (
+                            <Badge className="text-xs bg-secondary text-secondary-foreground">
+                              {SURVIVE_PRESET_LIST.find((p) => p.id === room.survivePreset)
+                                ?.label ?? room.survivePreset}
+                            </Badge>
+                          )}
                           {status && (
                             <Badge className="text-xs bg-secondary text-secondary-foreground">
                               {phaseLabel(status.phase)}

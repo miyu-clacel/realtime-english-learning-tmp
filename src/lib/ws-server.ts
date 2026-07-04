@@ -3,11 +3,13 @@ import { parse } from "url";
 import { WebSocketServer, WebSocket } from "ws";
 import { getRoom } from "./rooms";
 import { gradeQuiz, toPublicQuestions } from "./quiz";
+import { getSurvivePresetLabel } from "./survive";
 import {
   getSurviveSession,
   getSurviveSessionStatus,
   handleSurviveJoin,
   handleSurviveLastWords,
+  handleSurviveStamp,
   handleSurviveSubmit,
   resetSurviveSession,
   sendSurviveRoomState,
@@ -426,6 +428,9 @@ function handleJoin(ws: WebSocket, roomId: string, username: string) {
         gameType: "survive",
         timeLimitSeconds: room.timeLimitSeconds,
         totalQuestions: room.questions.length,
+        difficultyLabel: room.survivePreset
+          ? getSurvivePresetLabel(room.survivePreset)
+          : undefined,
       });
       syncSurvivePlayerState(ws, normalizedRoomId, send);
       sendRoomState(normalizedRoomId);
@@ -565,6 +570,21 @@ function bindWebSocketHandlers(wss: WebSocketServer) {
                   info.roomId,
                   info.username,
                   data.message,
+                  send,
+                  broadcast
+                );
+              }
+            }
+            break;
+          case "survive_stamp":
+            if (data.stamp) {
+              const info = clients.get(ws);
+              if (info) {
+                handleSurviveStamp(
+                  ws,
+                  info.roomId,
+                  info.username,
+                  data.stamp,
                   send,
                   broadcast
                 );

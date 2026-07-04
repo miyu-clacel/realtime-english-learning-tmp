@@ -1,5 +1,5 @@
 import { v4 as uuidv4 } from "uuid";
-import type { GameType, QuizQuestion, Room, RoomPublic } from "./types";
+import type { GameType, QuizQuestion, Room, RoomPublic, SurvivePresetId } from "./types";
 import { toPublicQuestions } from "./quiz";
 
 const globalForRooms = globalThis as unknown as {
@@ -15,7 +15,8 @@ export function createRoom(
   name: string,
   gameType: GameType,
   questions: QuizQuestion[],
-  timeLimitSeconds: number
+  timeLimitSeconds: number,
+  survivePreset?: SurvivePresetId
 ): Room {
   const room: Room = {
     id: uuidv4().slice(0, 8).toUpperCase(),
@@ -24,6 +25,7 @@ export function createRoom(
     gameType,
     questions,
     timeLimitSeconds,
+    ...(survivePreset ? { survivePreset } : {}),
   };
   rooms.set(room.id, room);
   return room;
@@ -43,6 +45,7 @@ export function getRoomPublic(roomId: string): RoomPublic | undefined {
     gameType: room.gameType,
     questions: toPublicQuestions(room.questions),
     timeLimitSeconds: room.timeLimitSeconds,
+    survivePreset: room.survivePreset,
   };
 }
 
@@ -54,5 +57,6 @@ export function getAllRooms(): RoomPublic[] {
     gameType: room.gameType,
     questions: toPublicQuestions(room.questions),
     timeLimitSeconds: room.timeLimitSeconds,
+    survivePreset: room.survivePreset,
   }));
 }

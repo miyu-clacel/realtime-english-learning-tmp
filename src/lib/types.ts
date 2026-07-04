@@ -1,5 +1,7 @@
 export type GameType = "word-quiz" | "survive";
 
+export type SurvivePresetId = "a2" | "b1" | "b2" | "c1";
+
 export interface QuizQuestion {
   id: number;
   /** 穴埋め部分は ___ で表す */
@@ -31,6 +33,8 @@ export interface Room {
   questions: QuizQuestion[];
   /** 制限時間（秒）word-quiz: 全体 / survive: 1問あたり */
   timeLimitSeconds: number;
+  /** Survive の問題プリセット */
+  survivePreset?: SurvivePresetId;
 }
 
 export interface RoomPublic {
@@ -40,6 +44,7 @@ export interface RoomPublic {
   gameType: GameType;
   questions: QuizQuestionPublic[];
   timeLimitSeconds: number;
+  survivePreset?: SurvivePresetId;
 }
 
 export interface RankingEntry {
@@ -54,6 +59,12 @@ export interface SurviveLastWord {
   username: string;
   message: string;
   round: number;
+}
+
+export interface SurviveStampEvent {
+  id: string;
+  username: string;
+  stamp: string;
 }
 
 export interface SurvivePlayerResult {
@@ -83,6 +94,7 @@ export type WsMessageType =
   | "survive_final"
   | "survive_last_words"
   | "survive_last_words_update"
+  | "survive_stamp"
   | "error";
 
 export type GamePhase =
@@ -120,6 +132,10 @@ export interface WsMessage {
   totalParticipants?: number;
   surviveResults?: SurvivePlayerResult[];
   lastWords?: SurviveLastWord[];
+  stamp?: string;
+  stampId?: string;
   message?: string;
+  survivePreset?: SurvivePresetId;
+  difficultyLabel?: string;
   error?: string;
 }
