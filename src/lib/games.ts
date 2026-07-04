@@ -17,7 +17,7 @@ export const GAMES: Record<GameType, GameInfo> = {
   survive: {
     id: "survive",
     name: "Survive",
-    description: "30問サバイバル（A2〜C1プリセット）。10秒以内に正解した人だけ生き残る。",
+    description: "30問サバイバル（A2〜C1プリセット）。15秒以内に正解した人だけ生き残る。",
     emoji: "🔥",
   },
 };

@@ -24,7 +24,7 @@ export const DEFAULT_QUIZ_QUESTIONS: QuizQuestion[] = [
     id: 1,
     sentence: "I'm looking forward ___ hearing from you soon.",
     answer: "to",
-    hint: "look forward to + 名詞/動名詞",
+    hint: "楽しみにする構文の前置詞",
   },
   {
     id: 2,
@@ -36,7 +36,7 @@ export const DEFAULT_QUIZ_QUESTIONS: QuizQuestion[] = [
     id: 3,
     sentence: "She apologized ___ being late to the meeting.",
     answer: "for",
-    hint: "apologize for + 名詞/動名詞",
+    hint: "謝罪の理由を表す前置詞",
   },
   {
     id: 4,

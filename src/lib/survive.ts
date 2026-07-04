@@ -14,7 +14,7 @@ export {
 } from "./survive-presets";
 
 export const SURVIVE_QUESTION_COUNT = 30;
-export const SURVIVE_ROUND_SECONDS = 10;
+export const SURVIVE_ROUND_SECONDS = 15;
 export const SURVIVE_ROUND_RESULT_MS = 3000;
 export const MAX_LAST_WORDS_LENGTH = 100;
 export const STAMP_COOLDOWN_MS = 1500;

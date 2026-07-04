@@ -33,7 +33,7 @@ export function useSurviveWebSocket(roomId: string, username: string) {
   const [question, setQuestion] = useState<QuizQuestionPublic | null>(null);
   const [questionNumber, setQuestionNumber] = useState(0);
   const [totalQuestions, setTotalQuestions] = useState(30);
-  const [roundSeconds, setRoundSeconds] = useState(10);
+  const [roundSeconds, setRoundSeconds] = useState(15);
   const [difficultyLabel, setDifficultyLabel] = useState<string | null>(null);
   const [endsAt, setEndsAt] = useState<number | null>(null);
   const [survivors, setSurvivors] = useState<string[]>([]);
