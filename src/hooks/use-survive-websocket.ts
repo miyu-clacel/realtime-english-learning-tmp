@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type {
   QuizQuestionPublic,
+  SurviveLastWord,
   SurvivePlayerResult,
   WsMessage,
 } from "@/lib/types";
@@ -38,6 +39,7 @@ export function useSurviveWebSocket(roomId: string, username: string) {
   const [submitted, setSubmitted] = useState(false);
   const [isAlive, setIsAlive] = useState(true);
   const [finalResults, setFinalResults] = useState<SurvivePlayerResult[]>([]);
+  const [lastWords, setLastWords] = useState<SurviveLastWord[]>([]);
   const [participants, setParticipants] = useState<string[]>([]);
   const [wsError, setWsError] = useState<string | null>(null);
   const wsRef = useRef<WebSocket | null>(null);
@@ -51,6 +53,7 @@ export function useSurviveWebSocket(roomId: string, username: string) {
     setPhase("lobby");
     setSubmitted(false);
     setIsAlive(true);
+    setLastWords([]);
 
     const ws = new WebSocket(getWsUrl());
     wsRef.current = ws;
@@ -72,6 +75,7 @@ export function useSurviveWebSocket(roomId: string, username: string) {
       switch (data.type) {
         case "quiz_data":
           if (data.totalQuestions) setTotalQuestions(data.totalQuestions);
+          if (data.lastWords) setLastWords(data.lastWords);
           break;
         case "survive_question":
           setPhase("question");
@@ -85,6 +89,7 @@ export function useSurviveWebSocket(roomId: string, username: string) {
           setCorrectAnswer(null);
           setEliminated([]);
           setIsAlive(data.survivors?.includes(username) ?? true);
+          if (data.lastWords) setLastWords(data.lastWords);
           break;
         case "survive_round_result":
           setPhase("round_result");
@@ -95,6 +100,7 @@ export function useSurviveWebSocket(roomId: string, username: string) {
           setEliminated(data.eliminated ?? []);
           setCorrectAnswer(data.correctAnswer ?? null);
           setIsAlive(data.survivors?.includes(username) ?? false);
+          if (data.lastWords) setLastWords(data.lastWords);
           break;
         case "survive_final":
           setPhase("final");
@@ -102,6 +108,10 @@ export function useSurviveWebSocket(roomId: string, username: string) {
           setSurvivors(data.survivors ?? []);
           setAliveCount(data.aliveCount ?? 0);
           setIsAlive(data.survivors?.includes(username) ?? false);
+          if (data.lastWords) setLastWords(data.lastWords);
+          break;
+        case "survive_last_words_update":
+          if (data.lastWords) setLastWords(data.lastWords);
           break;
         case "survive_submit_ack":
           setSubmitted(true);
@@ -118,6 +128,7 @@ export function useSurviveWebSocket(roomId: string, username: string) {
           setSubmitted(false);
           setIsAlive(true);
           setFinalResults([]);
+          setLastWords([]);
           break;
         case "error":
           if (data.error) setWsError(data.error);
@@ -158,6 +169,19 @@ export function useSurviveWebSocket(roomId: string, username: string) {
     [question]
   );
 
+  const submitLastWords = useCallback((message: string) => {
+    if (!wsRef.current || wsRef.current.readyState !== WebSocket.OPEN) return;
+    setWsError(null);
+    wsRef.current.send(
+      JSON.stringify({
+        type: "survive_last_words",
+        message,
+      } satisfies WsMessage)
+    );
+  }, []);
+
+  const hasLastWords = lastWords.some((entry) => entry.username === username);
+
   return {
     connected,
     phase,
@@ -172,8 +196,11 @@ export function useSurviveWebSocket(roomId: string, username: string) {
     submitted,
     isAlive,
     finalResults,
+    lastWords,
+    hasLastWords,
     participants,
     wsError,
     submitAnswer,
+    submitLastWords,
   };
 }

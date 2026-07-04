@@ -3,6 +3,7 @@ import type { QuizQuestion } from "./types";
 export const SURVIVE_QUESTION_COUNT = 10;
 export const SURVIVE_ROUND_SECONDS = 15;
 export const SURVIVE_ROUND_RESULT_MS = 3000;
+export const MAX_LAST_WORDS_LENGTH = 100;
 
 /** 難易度順（易→難）の10問 */
 export const DEFAULT_SURVIVE_QUESTIONS: QuizQuestion[] = [

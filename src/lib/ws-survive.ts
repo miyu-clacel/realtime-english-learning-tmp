@@ -1,12 +1,13 @@
 import { WebSocket } from "ws";
 import { getRoom } from "./rooms";
 import {
+  MAX_LAST_WORDS_LENGTH,
   SURVIVE_ROUND_RESULT_MS,
   SURVIVE_ROUND_SECONDS,
   gradeSurviveAnswer,
 } from "./survive";
 import { toPublicQuestions } from "./quiz";
-import type { QuizQuestion, SurvivePlayerResult, WsMessage } from "./types";
+import type { QuizQuestion, SurviveLastWord, SurvivePlayerResult, WsMessage } from "./types";
 
 interface SurvivePlayerState {
   correctCount: number;
@@ -19,6 +20,7 @@ interface SurviveSession {
   alive: Set<string>;
   roundAnswers: Map<string, string>;
   playerStates: Map<string, SurvivePlayerState>;
+  lastWords: Map<string, SurviveLastWord>;
   endsAt: number | null;
   timerHandle: ReturnType<typeof setTimeout> | null;
   delayHandle: ReturnType<typeof setTimeout> | null;
@@ -41,6 +43,7 @@ function createEmptySurviveSession(): SurviveSession {
     alive: new Set(),
     roundAnswers: new Map(),
     playerStates: new Map(),
+    lastWords: new Map(),
     endsAt: null,
     timerHandle: null,
     delayHandle: null,
@@ -73,6 +76,13 @@ export function resetSurviveSession(roomId: string) {
   const existing = surviveSessions.get(normalized);
   if (existing) clearSurviveTimers(existing);
   surviveSessions.set(normalized, createEmptySurviveSession());
+}
+
+function getLastWordsList(session: SurviveSession): SurviveLastWord[] {
+  return Array.from(session.lastWords.values()).sort((a, b) => {
+    if (a.round !== b.round) return a.round - b.round;
+    return a.username.localeCompare(b.username);
+  });
 }
 
 function buildSurviveResults(
@@ -151,6 +161,7 @@ export function startSurviveGame(
   session.questionIndex = 0;
   session.alive = new Set(connected);
   session.roundAnswers = new Map();
+  session.lastWords = new Map();
   session.playerStates = new Map(
     connected.map((name) => [name, { correctCount: 0, eliminatedAtRound: null }])
   );
@@ -188,6 +199,7 @@ function startSurviveQuestion(
     endsAt: session.endsAt,
     survivors: Array.from(session.alive),
     aliveCount: session.alive.size,
+    lastWords: getLastWordsList(session),
   });
   sendRoomState(roomId);
 
@@ -242,6 +254,7 @@ function resolveSurviveRound(
     survivors: Array.from(session.alive),
     eliminated,
     aliveCount: session.alive.size,
+    lastWords: getLastWordsList(session),
   });
   sendRoomState(roomId);
 
@@ -274,6 +287,7 @@ function finishSurviveGame(
     survivors: Array.from(session.alive),
     aliveCount: session.alive.size,
     totalQuestions: room.questions.length,
+    lastWords: getLastWordsList(session),
   });
   sendRoomState(roomId);
 }
@@ -293,6 +307,7 @@ export function handleSurviveJoin(
     gameType: "survive",
     timeLimitSeconds: SURVIVE_ROUND_SECONDS,
     totalQuestions: room.questions.length,
+    lastWords: getLastWordsList(getSurviveSession(roomId)),
   });
 
   sendRoomState(roomId);
@@ -321,6 +336,7 @@ export function syncSurvivePlayerState(
       endsAt: session.endsAt ?? undefined,
       survivors: Array.from(session.alive),
       aliveCount: session.alive.size,
+      lastWords: getLastWordsList(session),
     });
   } else if (session.phase === "round_result" && question) {
     send(ws, {
@@ -333,6 +349,7 @@ export function syncSurvivePlayerState(
       correctAnswer: question.answer,
       survivors: Array.from(session.alive),
       aliveCount: session.alive.size,
+      lastWords: getLastWordsList(session),
     });
   } else if (session.phase === "final") {
     send(ws, {
@@ -343,6 +360,7 @@ export function syncSurvivePlayerState(
       survivors: Array.from(session.alive),
       aliveCount: session.alive.size,
       totalQuestions: room.questions.length,
+      lastWords: getLastWordsList(session),
     });
   }
 }
@@ -409,5 +427,63 @@ export function sendSurviveRoomState(
     questionNumber:
       session.phase === "lobby" ? 0 : session.questionIndex + 1,
     endsAt: session.endsAt ?? undefined,
+  });
+}
+
+export function handleSurviveLastWords(
+  ws: WebSocket,
+  roomId: string,
+  username: string,
+  message: string,
+  send: (ws: WebSocket, message: WsMessage) => void,
+  broadcast: (roomId: string, message: WsMessage) => void
+) {
+  const session = getSurviveSession(roomId);
+
+  if (session.phase === "lobby") {
+    send(ws, { type: "error", error: "ゲーム開始前は遺言を残せません" });
+    return;
+  }
+
+  if (session.alive.has(username)) {
+    send(ws, { type: "error", error: "生存者は遺言を残せません" });
+    return;
+  }
+
+  const state = session.playerStates.get(username);
+  if (!state) {
+    send(ws, { type: "error", error: "参加者として登録されていません" });
+    return;
+  }
+
+  if (session.lastWords.has(username)) {
+    send(ws, { type: "error", error: "遺言はすでに残しています" });
+    return;
+  }
+
+  const trimmed = message.trim();
+  if (!trimmed) {
+    send(ws, { type: "error", error: "遺言を入力してください" });
+    return;
+  }
+
+  if (trimmed.length > MAX_LAST_WORDS_LENGTH) {
+    send(ws, {
+      type: "error",
+      error: `遺言は${MAX_LAST_WORDS_LENGTH}文字以内にしてください`,
+    });
+    return;
+  }
+
+  session.lastWords.set(username, {
+    username,
+    message: trimmed,
+    round: state.eliminatedAtRound ?? session.questionIndex + 1,
+  });
+
+  broadcast(roomId, {
+    type: "survive_last_words_update",
+    gameType: "survive",
+    lastWords: getLastWordsList(session),
   });
 }

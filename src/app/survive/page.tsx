@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Clock, LogOut, Skull, Trophy, Users } from "lucide-react";
+import { Clock, LogOut, MessageSquare, Skull, Trophy, Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -15,6 +15,8 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { useSurviveWebSocket } from "@/hooks/use-survive-websocket";
+import { MAX_LAST_WORDS_LENGTH } from "@/lib/survive";
+import type { SurviveLastWord } from "@/lib/types";
 
 function renderSentence(sentence: string) {
   const parts = sentence.split("___");
@@ -76,6 +78,92 @@ function SurvivorSidebar({
   );
 }
 
+function LastWordsPanel({
+  lastWords,
+  username,
+}: {
+  lastWords: SurviveLastWord[];
+  username: string;
+}) {
+  if (lastWords.length === 0) return null;
+
+  return (
+    <Card className="mt-4">
+      <CardHeader className="pb-3">
+        <CardTitle className="text-sm flex items-center gap-2">
+          <MessageSquare className="w-4 h-4" />
+          遺言
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-2">
+        {lastWords.map((entry) => (
+          <div
+            key={entry.username}
+            className={`p-2 rounded-md text-sm ${
+              entry.username === username
+                ? "bg-primary/10 border border-primary/20"
+                : "bg-muted/40"
+            }`}
+          >
+            <p className="font-medium text-xs text-muted-foreground mb-0.5">
+              {entry.username}
+              {entry.username === username && " (あなた)"}
+              <span className="ml-1">· 第{entry.round}問</span>
+            </p>
+            <p className="leading-snug">{entry.message}</p>
+          </div>
+        ))}
+      </CardContent>
+    </Card>
+  );
+}
+
+function LastWordsForm({
+  onSubmit,
+  disabled,
+}: {
+  onSubmit: (message: string) => void;
+  disabled?: boolean;
+}) {
+  const [message, setMessage] = useState("");
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!message.trim()) return;
+    onSubmit(message.trim());
+    setMessage("");
+  };
+
+  return (
+    <Card className="border-dashed border-destructive/40 bg-destructive/5">
+      <CardHeader className="pb-3">
+        <CardTitle className="text-base flex items-center gap-2">
+          <MessageSquare className="w-4 h-4" />
+          遺言を残す
+        </CardTitle>
+        <CardDescription>
+          脱落しました。最後のメッセージを残せます（{MAX_LAST_WORDS_LENGTH}文字以内）
+        </CardDescription>
+      </CardHeader>
+      <CardContent>
+        <form onSubmit={handleSubmit} className="space-y-3">
+          <Input
+            value={message}
+            onChange={(e) => setMessage(e.target.value)}
+            placeholder="遺言を入力..."
+            maxLength={MAX_LAST_WORDS_LENGTH}
+            disabled={disabled}
+            autoFocus
+          />
+          <Button type="submit" className="w-full" disabled={disabled || !message.trim()}>
+            遺言を送る
+          </Button>
+        </form>
+      </CardContent>
+    </Card>
+  );
+}
+
 export default function SurvivePage() {
   const router = useRouter();
   const [roomId, setRoomId] = useState("");
@@ -98,8 +186,11 @@ export default function SurvivePage() {
     submitted,
     isAlive,
     finalResults,
+    lastWords,
+    hasLastWords,
     wsError,
     submitAnswer,
+    submitLastWords,
   } = useSurviveWebSocket(roomId, username);
 
   useEffect(() => {
@@ -177,11 +268,16 @@ export default function SurvivePage() {
 
         {connected && (
           <div className="flex flex-col lg:flex-row gap-6">
-            <SurvivorSidebar
-              survivors={survivors}
-              aliveCount={aliveCount}
-              username={username}
-            />
+            <div className="w-full lg:w-52 shrink-0">
+              <SurvivorSidebar
+                survivors={survivors}
+                aliveCount={aliveCount}
+                username={username}
+              />
+              {phase !== "lobby" && (
+                <LastWordsPanel lastWords={lastWords} username={username} />
+              )}
+            </div>
 
             <div className="flex-1 space-y-4">
               {phase === "lobby" && (
@@ -226,9 +322,14 @@ export default function SurvivePage() {
                   </CardHeader>
                   <CardContent>
                     {!isAlive ? (
-                      <p className="text-center text-muted-foreground py-4">
-                        脱落しました。結果を見守りましょう
-                      </p>
+                      <div className="space-y-4">
+                        <p className="text-center text-muted-foreground">
+                          脱落しました。次の問題を見守りましょう
+                        </p>
+                        {!hasLastWords && (
+                          <LastWordsForm onSubmit={submitLastWords} />
+                        )}
+                      </div>
                     ) : submitted ? (
                       <p className="text-center text-primary py-4 font-medium">
                         回答済み — 結果を待っています...
@@ -292,9 +393,14 @@ export default function SurvivePage() {
                       </div>
                     )}
                     {!isAlive && (
-                      <p className="text-center text-destructive text-sm">
-                        あなたはこのラウンドで脱落しました
-                      </p>
+                      <div className="space-y-4">
+                        <p className="text-center text-destructive text-sm">
+                          あなたはこのラウンドで脱落しました
+                        </p>
+                        {!hasLastWords && (
+                          <LastWordsForm onSubmit={submitLastWords} />
+                        )}
+                      </div>
                     )}
                   </CardContent>
                 </Card>
@@ -347,6 +453,9 @@ export default function SurvivePage() {
                         </div>
                       ))}
                     </div>
+                    {!isAlive && !hasLastWords && (
+                      <LastWordsForm onSubmit={submitLastWords} />
+                    )}
                   </CardContent>
                 </Card>
               )}

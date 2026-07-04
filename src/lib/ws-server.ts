@@ -7,6 +7,7 @@ import {
   getSurviveSession,
   getSurviveSessionStatus,
   handleSurviveJoin,
+  handleSurviveLastWords,
   handleSurviveSubmit,
   resetSurviveSession,
   sendSurviveRoomState,
@@ -553,6 +554,21 @@ function bindWebSocketHandlers(wss: WebSocketServer) {
           case "submit":
             if (data.answers) {
               handleSubmit(ws, data.answers);
+            }
+            break;
+          case "survive_last_words":
+            if (data.message !== undefined) {
+              const info = clients.get(ws);
+              if (info) {
+                handleSurviveLastWords(
+                  ws,
+                  info.roomId,
+                  info.username,
+                  data.message,
+                  send,
+                  broadcast
+                );
+              }
             }
             break;
         }

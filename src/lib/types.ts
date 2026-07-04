@@ -50,6 +50,12 @@ export interface RankingEntry {
   submittedAt: number;
 }
 
+export interface SurviveLastWord {
+  username: string;
+  message: string;
+  round: number;
+}
+
 export interface SurvivePlayerResult {
   username: string;
   survived: boolean;
@@ -75,6 +81,8 @@ export type WsMessageType =
   | "survive_submit_ack"
   | "survive_round_result"
   | "survive_final"
+  | "survive_last_words"
+  | "survive_last_words_update"
   | "error";
 
 export type GamePhase =
@@ -110,5 +118,7 @@ export interface WsMessage {
   correctAnswer?: string;
   aliveCount?: number;
   surviveResults?: SurvivePlayerResult[];
+  lastWords?: SurviveLastWord[];
+  message?: string;
   error?: string;
 }
