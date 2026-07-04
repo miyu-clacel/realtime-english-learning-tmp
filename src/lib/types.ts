@@ -117,6 +117,7 @@ export interface WsMessage {
   eliminated?: string[];
   correctAnswer?: string;
   aliveCount?: number;
+  totalParticipants?: number;
   surviveResults?: SurvivePlayerResult[];
   lastWords?: SurviveLastWord[];
   message?: string;

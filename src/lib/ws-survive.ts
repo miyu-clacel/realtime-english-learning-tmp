@@ -108,6 +108,14 @@ function getCurrentQuestion(room: { questions: QuizQuestion[] }, index: number) 
   return room.questions[index];
 }
 
+function getTotalParticipants(
+  session: SurviveSession,
+  connectedCount: number
+): number {
+  if (session.playerStates.size > 0) return session.playerStates.size;
+  return connectedCount;
+}
+
 export function getSurviveSessionStatus(
   roomId: string,
   participants: string[]
@@ -123,6 +131,7 @@ export function getSurviveSessionStatus(
     phase: session.phase,
     participantCount: participants.length,
     participants,
+    totalParticipants: getTotalParticipants(session, participants.length),
     aliveCount: session.alive.size,
     survivors: Array.from(session.alive),
     questionNumber:
@@ -199,6 +208,7 @@ function startSurviveQuestion(
     endsAt: session.endsAt,
     survivors: Array.from(session.alive),
     aliveCount: session.alive.size,
+    totalParticipants: getTotalParticipants(session, session.alive.size),
     lastWords: getLastWordsList(session),
   });
   sendRoomState(roomId);
@@ -254,6 +264,7 @@ function resolveSurviveRound(
     survivors: Array.from(session.alive),
     eliminated,
     aliveCount: session.alive.size,
+    totalParticipants: getTotalParticipants(session, 0),
     lastWords: getLastWordsList(session),
   });
   sendRoomState(roomId);
@@ -286,6 +297,7 @@ function finishSurviveGame(
     surviveResults: results,
     survivors: Array.from(session.alive),
     aliveCount: session.alive.size,
+    totalParticipants: getTotalParticipants(session, 0),
     totalQuestions: room.questions.length,
     lastWords: getLastWordsList(session),
   });
@@ -336,6 +348,7 @@ export function syncSurvivePlayerState(
       endsAt: session.endsAt ?? undefined,
       survivors: Array.from(session.alive),
       aliveCount: session.alive.size,
+      totalParticipants: getTotalParticipants(session, 0),
       lastWords: getLastWordsList(session),
     });
   } else if (session.phase === "round_result" && question) {
@@ -349,6 +362,7 @@ export function syncSurvivePlayerState(
       correctAnswer: question.answer,
       survivors: Array.from(session.alive),
       aliveCount: session.alive.size,
+      totalParticipants: getTotalParticipants(session, 0),
       lastWords: getLastWordsList(session),
     });
   } else if (session.phase === "final") {
@@ -359,6 +373,7 @@ export function syncSurvivePlayerState(
       surviveResults: buildSurviveResults(session, room.questions.length),
       survivors: Array.from(session.alive),
       aliveCount: session.alive.size,
+      totalParticipants: getTotalParticipants(session, 0),
       totalQuestions: room.questions.length,
       lastWords: getLastWordsList(session),
     });
@@ -424,6 +439,7 @@ export function sendSurviveRoomState(
     submittedUsers,
     survivors: Array.from(session.alive),
     aliveCount: session.alive.size,
+    totalParticipants: getTotalParticipants(session, connected.length),
     questionNumber:
       session.phase === "lobby" ? 0 : session.questionIndex + 1,
     endsAt: session.endsAt ?? undefined,

@@ -34,6 +34,7 @@ export function useSurviveWebSocket(roomId: string, username: string) {
   const [endsAt, setEndsAt] = useState<number | null>(null);
   const [survivors, setSurvivors] = useState<string[]>([]);
   const [aliveCount, setAliveCount] = useState(0);
+  const [totalParticipants, setTotalParticipants] = useState(0);
   const [eliminated, setEliminated] = useState<string[]>([]);
   const [correctAnswer, setCorrectAnswer] = useState<string | null>(null);
   const [submitted, setSubmitted] = useState(false);
@@ -76,6 +77,9 @@ export function useSurviveWebSocket(roomId: string, username: string) {
         case "quiz_data":
           if (data.totalQuestions) setTotalQuestions(data.totalQuestions);
           if (data.lastWords) setLastWords(data.lastWords);
+          if (data.totalParticipants !== undefined) {
+            setTotalParticipants(data.totalParticipants);
+          }
           break;
         case "survive_question":
           setPhase("question");
@@ -90,6 +94,9 @@ export function useSurviveWebSocket(roomId: string, username: string) {
           setEliminated([]);
           setIsAlive(data.survivors?.includes(username) ?? true);
           if (data.lastWords) setLastWords(data.lastWords);
+          if (data.totalParticipants !== undefined) {
+            setTotalParticipants(data.totalParticipants);
+          }
           break;
         case "survive_round_result":
           setPhase("round_result");
@@ -101,6 +108,9 @@ export function useSurviveWebSocket(roomId: string, username: string) {
           setCorrectAnswer(data.correctAnswer ?? null);
           setIsAlive(data.survivors?.includes(username) ?? false);
           if (data.lastWords) setLastWords(data.lastWords);
+          if (data.totalParticipants !== undefined) {
+            setTotalParticipants(data.totalParticipants);
+          }
           break;
         case "survive_final":
           setPhase("final");
@@ -109,6 +119,9 @@ export function useSurviveWebSocket(roomId: string, username: string) {
           setAliveCount(data.aliveCount ?? 0);
           setIsAlive(data.survivors?.includes(username) ?? false);
           if (data.lastWords) setLastWords(data.lastWords);
+          if (data.totalParticipants !== undefined) {
+            setTotalParticipants(data.totalParticipants);
+          }
           break;
         case "survive_last_words_update":
           if (data.lastWords) setLastWords(data.lastWords);
@@ -120,6 +133,11 @@ export function useSurviveWebSocket(roomId: string, username: string) {
           if (data.participants) setParticipants(data.participants);
           if (data.survivors) setSurvivors(data.survivors);
           if (data.aliveCount !== undefined) setAliveCount(data.aliveCount);
+          if (data.totalParticipants !== undefined) {
+            setTotalParticipants(data.totalParticipants);
+          } else if (data.totalCount !== undefined) {
+            setTotalParticipants(data.totalCount);
+          }
           if (data.phase) setPhase(data.phase as SurvivePhase);
           break;
         case "reset":
@@ -191,6 +209,7 @@ export function useSurviveWebSocket(roomId: string, username: string) {
     endsAt,
     survivors,
     aliveCount,
+    totalParticipants,
     eliminated,
     correctAnswer,
     submitted,

@@ -37,10 +37,12 @@ function formatRemaining(ms: number) {
 function SurvivorSidebar({
   survivors,
   aliveCount,
+  totalParticipants,
   username,
 }: {
   survivors: string[];
   aliveCount: number;
+  totalParticipants: number;
   username: string;
 }) {
   return (
@@ -49,10 +51,14 @@ function SurvivorSidebar({
         <CardHeader className="pb-3">
           <CardTitle className="text-sm flex items-center gap-2">
             <Users className="w-4 h-4" />
-            生存者 {aliveCount}人
+            参加者
           </CardTitle>
+          <CardDescription className="text-xs">
+            総数 {totalParticipants}人 · 生存 {aliveCount}人
+          </CardDescription>
         </CardHeader>
         <CardContent className="space-y-1">
+          <p className="text-xs font-medium text-muted-foreground mb-2">生存者</p>
           {survivors.length === 0 ? (
             <p className="text-xs text-muted-foreground">生存者なし</p>
           ) : (
@@ -181,6 +187,7 @@ export default function SurvivePage() {
     endsAt,
     survivors,
     aliveCount,
+    totalParticipants,
     eliminated,
     correctAnswer,
     submitted,
@@ -254,6 +261,11 @@ export default function SurvivePage() {
               🔥 Survive
             </h1>
             <p className="text-xs text-muted-foreground font-mono">{roomId}</p>
+            {phase !== "lobby" && totalParticipants > 0 && (
+              <p className="text-xs text-muted-foreground mt-1">
+                参加者 {totalParticipants}人 · 生存 {aliveCount}人
+              </p>
+            )}
           </div>
           <Button variant="ghost" size="icon" onClick={handleLeave}>
             <LogOut className="w-4 h-4" />
@@ -272,6 +284,7 @@ export default function SurvivePage() {
               <SurvivorSidebar
                 survivors={survivors}
                 aliveCount={aliveCount}
+                totalParticipants={totalParticipants}
                 username={username}
               />
               {phase !== "lobby" && (
@@ -371,11 +384,14 @@ export default function SurvivePage() {
                     </CardDescription>
                   </CardHeader>
                   <CardContent className="space-y-4">
-                    <div className="text-center">
+                    <div className="text-center space-y-1">
                       <p className="text-3xl font-bold text-primary">
-                        {aliveCount}人
+                        {aliveCount}
+                        <span className="text-lg text-muted-foreground font-normal">
+                          / {totalParticipants}
+                        </span>
                       </p>
-                      <p className="text-sm text-muted-foreground">生存</p>
+                      <p className="text-sm text-muted-foreground">生存者</p>
                     </div>
                     {eliminated.length > 0 && (
                       <div className="space-y-2">
@@ -412,7 +428,8 @@ export default function SurvivePage() {
                     <Trophy className="w-12 h-12 mx-auto text-yellow-500" />
                     <CardTitle>最終結果</CardTitle>
                     <CardDescription>
-                      全{totalQuestions}問終了 — 生存者 {aliveCount}人
+                      全{totalQuestions}問終了 — 参加者 {totalParticipants}人中{" "}
+                      {aliveCount}人が生存
                     </CardDescription>
                   </CardHeader>
                   <CardContent>

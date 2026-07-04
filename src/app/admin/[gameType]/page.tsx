@@ -42,6 +42,7 @@ interface RoomStatus {
   submittedCount: number;
   submittedUsers: string[];
   aliveCount?: number;
+  totalParticipants?: number;
   questionNumber?: number;
   totalQuestions?: number;
 }
@@ -105,6 +106,7 @@ function AdminGameContent({ gameType }: { gameType: GameType }) {
           submittedCount: data.status.submittedCount ?? 0,
           submittedUsers: data.status.submittedUsers ?? [],
           aliveCount: data.status.aliveCount,
+          totalParticipants: data.status.totalParticipants,
           questionNumber: data.status.questionNumber,
           totalQuestions: data.status.totalQuestions,
         },
@@ -419,9 +421,13 @@ function AdminGameContent({ gameType }: { gameType: GameType }) {
                       <div className="space-y-1 text-xs text-muted-foreground">
                         <div className="flex items-center gap-2">
                           <Users className="w-3.5 h-3.5" />
-                          {status.participantCount} 人参加
-                          {isSurvive && status.aliveCount !== undefined && (
-                            <span>· 生存 {status.aliveCount} 人</span>
+                          {status.participantCount} 人が接続中
+                          {isSurvive && status.totalParticipants !== undefined &&
+                            status.totalParticipants > 0 && (
+                            <span>
+                              · 参加者 {status.totalParticipants}人 · 生存{" "}
+                              {status.aliveCount ?? 0}人
+                            </span>
                           )}
                           {isSurvive && status.questionNumber !== undefined &&
                             status.questionNumber > 0 && (
